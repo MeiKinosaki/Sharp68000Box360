@@ -19,8 +19,12 @@ int main(void)
     printf("CPU core: integration pending\n");
     printf("Cloud ELF build: active\n");
 
+    /*
+     * libXenon's console API does not expose console_flush().
+     * Keep the diagnostic screen alive after writing the startup text.
+     */
     for (;;) {
-        console_flush();
+        __asm__ volatile("" ::: "memory");
     }
 
     return 0;
