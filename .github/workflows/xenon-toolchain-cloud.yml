@@ -10,64 +10,58 @@ on:
 permissions:
   contents: read
 
+# Keep only one expensive Xenon build active per branch.
+concurrency:
+  group: sharp68000box360-xenon-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   xenon-toolchain:
     runs-on: ubuntu-22.04
-    timeout-minutes: 120
-    env:
-      DEVKITXENON: /usr/local/xenon
+    timeout-minutes: 30
     steps:
       - name: Checkout Sharp68000Box360
         uses: actions/checkout@v4
 
-      - name: Install libXenon build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y git build-essential gcc g++ make cmake autoconf automake libtool pkg-config bison flex texinfo wget curl xz-utils bzip2 file gcc-multilib libgmp-dev libmpfr-dev libmpc-dev
-
-      - name: Checkout upstream libXenon
-        run: git clone --depth 1 https://github.com/Free60Project/libxenon.git /tmp/libxenon
-
-      - name: Build Xenon cross-toolchain
-        working-directory: /tmp/libxenon/toolchain
-        run: ./build-xenon-toolchain toolchain
-
-      - name: Build libXenon libraries
-        working-directory: /tmp/libxenon/toolchain
-        run: ./build-xenon-toolchain libxenon
-
-      - name: Export Xenon environment
-        run: |
-          echo "DEVKITXENON=$DEVKITXENON" >> "$GITHUB_ENV"
-          echo "$DEVKITXENON/bin" >> "$GITHUB_PATH"
-          echo "$DEVKITXENON/usr/bin" >> "$GITHUB_PATH"
-
-      - name: Verify compiler and linker
+      - name: Verify prebuilt libXenon container
         run: |
           set -euo pipefail
-          command -v xenon-gcc
-          command -v xenon-g++
-          command -v xenon-ld
-          xenon-gcc --version
-          xenon-g++ --version
-          xenon-ld --version
+          docker pull free60/libxenon:latest
+          docker run --rm free60/libxenon:latest bash -lc '
+            set -euo pipefail
+            export DEVKITXENON=/usr/local/xenon
+            export PATH="$DEVKITXENON/bin:$DEVKITXENON/usr/bin:$PATH"
+            command -v xenon-gcc
+            command -v xenon-g++
+            command -v xenon-ld
+            xenon-gcc --version
+          '
 
-      - name: Build upstream libXenon cube smoke test
-        working-directory: /tmp/libxenon/toolchain
-        run: ./build-xenon-toolchain cube
-
-      - name: Build Sharp68000Box360 ELF
+      - name: Build Sharp68000Box360 ELF in container
         run: |
           set -euo pipefail
-          test -f Makefile
-          test -f source/main.c
-          make clean
-          make
-          test -s xenon.elf
-          test -s xenon.elf32
-          file xenon.elf xenon.elf32
           mkdir -p build-report
-          cp xenon.elf xenon.elf32 build-report/
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            free60/libxenon:latest \
+            bash -lc '
+              set -euo pipefail
+              export DEVKITXENON=/usr/local/xenon
+              export PATH="$DEVKITXENON/bin:$DEVKITXENON/usr/bin:$PATH"
+              test -f Makefile
+              test -f source/main.c
+              make clean
+              make
+              test -s xenon.elf
+              test -s xenon.elf32
+              file xenon.elf xenon.elf32
+              cp xenon.elf xenon.elf32 build-report/
+              git clone --depth 1 https://github.com/Free60Project/libxenon.git /tmp/libxenon-src
+              make -C /tmp/libxenon-src/devkitxenon/examples/xenon/graphics/cube
+              test -s /tmp/libxenon-src/devkitxenon/examples/xenon/graphics/cube/cube.elf32
+              cp /tmp/libxenon-src/devkitxenon/examples/xenon/graphics/cube/cube.elf32 build-report/libxenon-cube-smoke.elf32
+            '
 
       - name: Create cloud build report
         if: always()
@@ -78,25 +72,25 @@ jobs:
             echo "# Sharp68000Box360 cloud build report"
             echo
             echo "- Commit: $GITHUB_SHA"
-            echo "- Host: $(uname -a)"
-            echo "- Xenon compiler: $(command -v xenon-gcc || echo unavailable)"
-            echo "- Xenon C++ compiler: $(command -v xenon-g++ || echo unavailable)"
-            echo "- Xenon linker: $(command -v xenon-ld || echo unavailable)"
-            if [ -s xenon.elf ]; then
-              echo "- Project ELF: built (xenon.elf)"
+            echo "- Runner: $(uname -a)"
+            if [ -s build-report/xenon.elf ]; then
+              echo "- Project ELF: built and non-empty"
             else
               echo "- Project ELF: NOT BUILT"
             fi
-            if [ -s xenon.elf32 ]; then
-              echo "- Project ELF32: built (xenon.elf32)"
+            if [ -s build-report/xenon.elf32 ]; then
+              echo "- Project ELF32: built and non-empty"
             else
               echo "- Project ELF32: NOT BUILT"
             fi
-            echo "- Scope: boot/console diagnostic only; emulator CPU and X68000 devices are not yet integrated."
+            if [ -s build-report/libxenon-cube-smoke.elf32 ]; then
+              echo "- Upstream cube smoke test: built"
+            else
+              echo "- Upstream cube smoke test: NOT BUILT"
+            fi
+            echo "- Scope: boot/console diagnostic only; CPU core and X68000 devices are not yet integrated."
+            echo "- default.xex: not generated by this workflow."
           } > build-report/README.md
-          if [ -f /tmp/libxenon/toolchain/cube.elf32 ]; then
-            cp /tmp/libxenon/toolchain/cube.elf32 build-report/libxenon-cube-smoke.elf32
-          fi
 
       - name: Upload cloud build artifacts
         if: always()
