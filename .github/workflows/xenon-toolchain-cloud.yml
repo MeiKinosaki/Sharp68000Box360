@@ -1,0 +1,78 @@
+name: Xenon toolchain cloud check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - "cloud/**"
+
+permissions:
+  contents: read
+
+jobs:
+  toolchain-check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Install host dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential gcc g++ make cmake             autoconf automake libtool pkg-config bison flex texinfo             wget curl python3 python3-pip xz-utils bzip2
+
+      - name: Inspect repository
+        run: |
+          echo "Project files:"
+          find . -maxdepth 3 -type f -not -path './.git/*' | sort
+          echo
+          if [ -f Makefile ]; then
+            echo "Project Makefile found."
+          else
+            echo "No project Makefile yet; project ELF/XEX build will be marked pending."
+          fi
+
+      - name: Build/check libxenon toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --depth 1 https://github.com/Free60Project/toolchain.git /tmp/xenon-toolchain
+          cd /tmp/xenon-toolchain
+          echo "Toolchain source checkout complete."
+          if [ -x ./build-xenon-toolchain ]; then
+            ./build-xenon-toolchain --help || true
+          else
+            echo "Expected build script not found at repository root."
+            find . -maxdepth 3 -type f | head -100
+            exit 1
+          fi
+          echo "This job inspects the upstream toolchain script. Full toolchain compilation is not attempted until its documented dependencies and build target are confirmed."
+
+      - name: Record available project build
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build-report
+          {
+            echo "# Cloud toolchain report"
+            echo
+            echo "- Repository: Sharp68000Box360"
+            echo "- Host compiler: $(gcc --version | head -1 || true)"
+            echo "- Xenon compiler present on runner: $(command -v xenon-gcc || echo no)"
+            echo "- ELF converter present on runner: $(command -v elf2xex || echo no)"
+            if [ -f Makefile ]; then
+              echo "- Project Makefile: present"
+            else
+              echo "- Project Makefile: absent; xenon.elf/default.xex not built"
+            fi
+          } > build-report/README.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sharp68000box360-cloud-toolchain-report
+          path: build-report/
+          if-no-files-found: error
