@@ -23,7 +23,7 @@ jobs:
       - name: Install libXenon build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y git build-essential gcc g++ make cmake             autoconf automake libtool pkg-config bison flex texinfo wget curl             xz-utils bzip2 file gcc-multilib libgmp-dev libmpfr-dev libmpc-dev
+          sudo apt-get install -y git build-essential gcc g++ make cmake autoconf automake libtool pkg-config bison flex texinfo wget curl xz-utils bzip2 file gcc-multilib libgmp-dev libmpfr-dev libmpc-dev
 
       - name: Checkout upstream libXenon
         run: git clone --depth 1 https://github.com/Free60Project/libxenon.git /tmp/libxenon
@@ -56,16 +56,18 @@ jobs:
         working-directory: /tmp/libxenon/toolchain
         run: ./build-xenon-toolchain cube
 
-      - name: Build Sharp68000Box360 if a project Makefile exists
-        shell: bash
+      - name: Build Sharp68000Box360 ELF
         run: |
           set -euo pipefail
-          if [ -f Makefile ]; then
-            make clean || true
-            make
-          else
-            echo "Project Makefile not present yet; project xenon.elf/default.xex build is pending."
-          fi
+          test -f Makefile
+          test -f source/main.c
+          make clean
+          make
+          test -s xenon.elf
+          test -s xenon.elf32
+          file xenon.elf xenon.elf32
+          mkdir -p build-report
+          cp xenon.elf xenon.elf32 build-report/
 
       - name: Create cloud build report
         if: always()
@@ -73,18 +75,24 @@ jobs:
         run: |
           mkdir -p build-report
           {
-            echo "# Sharp68000Box360 cloud toolchain report"
+            echo "# Sharp68000Box360 cloud build report"
             echo
             echo "- Commit: $GITHUB_SHA"
             echo "- Host: $(uname -a)"
             echo "- Xenon compiler: $(command -v xenon-gcc || echo unavailable)"
             echo "- Xenon C++ compiler: $(command -v xenon-g++ || echo unavailable)"
             echo "- Xenon linker: $(command -v xenon-ld || echo unavailable)"
-            if [ -f Makefile ]; then
-              echo "- Project Makefile: present"
+            if [ -s xenon.elf ]; then
+              echo "- Project ELF: built (xenon.elf)"
             else
-              echo "- Project Makefile: absent; no project xenon.elf/default.xex was generated."
+              echo "- Project ELF: NOT BUILT"
             fi
+            if [ -s xenon.elf32 ]; then
+              echo "- Project ELF32: built (xenon.elf32)"
+            else
+              echo "- Project ELF32: NOT BUILT"
+            fi
+            echo "- Scope: boot/console diagnostic only; emulator CPU and X68000 devices are not yet integrated."
           } > build-report/README.md
           if [ -f /tmp/libxenon/toolchain/cube.elf32 ]; then
             cp /tmp/libxenon/toolchain/cube.elf32 build-report/libxenon-cube-smoke.elf32
@@ -97,3 +105,4 @@ jobs:
           name: sharp68000box360-xenon-cloud-build
           path: build-report/
           if-no-files-found: error
+          retention-days: 14
