@@ -1,0 +1,64 @@
+name: Cloud Xenon toolchain
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - "cloud/**"
+
+permissions:
+  contents: read
+
+jobs:
+  xenon-toolchain-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout Sharp68000Box360
+        uses: actions/checkout@v4
+
+      - name: Prepare output directory
+        run: mkdir -p build/cloud-toolchain
+
+      - name: Build upstream libXenon smoke sample in the cloud
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull free60/libxenon:latest
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /tmp \
+            free60/libxenon:latest \
+            bash -lc '
+              set -euo pipefail
+              echo "=== Xenon compiler ==="
+              command -v xenon-gcc
+              xenon-gcc --version
+
+              echo "=== Fetch upstream libXenon examples ==="
+              git clone --depth 1 https://github.com/Free60Project/libxenon.git /tmp/libxenon-src
+
+              echo "=== Compile upstream Xbox 360 cube example ==="
+              make -C /tmp/libxenon-src/devkitxenon/examples/xenon/graphics/cube
+
+              test -f /tmp/libxenon-src/devkitxenon/examples/xenon/graphics/cube/cube.elf32
+              cp /tmp/libxenon-src/devkitxenon/examples/xenon/graphics/cube/cube.elf32 /workspace/build/cloud-toolchain/libxenon-cube-smoke.elf32
+
+              if [ -f /workspace/Makefile ]; then
+                echo "PROJECT_BUILD=MAKEFILE_FOUND" | tee /workspace/build/cloud-toolchain/status.txt
+                make -C /workspace
+                find /workspace -maxdepth 4 -type f \\( -name "xenon.elf" -o -name "*.elf" -o -name "*.elf32" -o -name "default.xex" \\) -not -path "/workspace/build/*" -exec cp -t /workspace/build/cloud-toolchain {} +
+              else
+                echo "PROJECT_BUILD=SKIPPED_NO_MAKEFILE" | tee /workspace/build/cloud-toolchain/status.txt
+                echo "The upstream toolchain smoke sample was built. This repository currently has no root Makefile, so no Sharp68000Box360 binary was produced." | tee -a /workspace/build/cloud-toolchain/status.txt
+              fi
+            '
+
+      - name: Upload cloud build artifacts and status
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sharp68000Box360-cloud-toolchain
+          path: build/cloud-toolchain/
+          if-no-files-found: error
+          retention-days: 14
