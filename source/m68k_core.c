@@ -4,6 +4,7 @@
 #define M68K_SR_SUPERVISOR 0x2000u
 #define M68K_SR_ZERO       0x0004u
 #define M68K_SR_NEGATIVE   0x0008u
+#define M68K_SR_OVERFLOW   0x0002u
 #define M68K_SR_CARRY      0x0001u
 
 static uint16_t fetch16(m68k_cpu_t *cpu)
@@ -28,6 +29,7 @@ static void set_nz(m68k_cpu_t *cpu, uint32_t value)
 
 void m68k_init(m68k_cpu_t *cpu, const m68k_bus_t *bus)
 {
+    if (cpu == 0) return;
     memset(cpu, 0, sizeof(*cpu));
     if (bus != 0) cpu->bus = *bus;
 }
@@ -47,9 +49,8 @@ int m68k_reset(m68k_cpu_t *cpu)
 }
 
 /*
- * Deliberately small first interpreter slice: NOP, RTS, MOVEQ, BRA/Bcc,
- * absolute JMP and STOP. Unimplemented opcodes latch a fault instead of
- * silently pretending to execute a complete 68000 instruction set.
+ * First interpreter slice only: NOP, RTS, MOVEQ, BRA/Bcc, absolute JMP
+ * and STOP. Other opcodes latch a fault; this is not a complete 68000.
  */
 unsigned m68k_step(m68k_cpu_t *cpu)
 {
@@ -62,46 +63,56 @@ unsigned m68k_step(m68k_cpu_t *cpu)
     if (cpu == 0 || cpu->fault || cpu->stopped || cpu->bus.read16 == 0) return 0u;
     op = fetch16(cpu);
 
-    if (op == 0x4E71u) { /* NOP */
-        used = 4u;
-    } else if (op == 0x4E75u) { /* RTS */
+    if (op == 0x4E71u) {
+        used = 4u; /* NOP */
+    } else if (op == 0x4E75u) {
+        if (cpu->bus.read16 == 0) { cpu->fault = 1u; return 0u; }
         target = ((uint32_t)cpu->bus.read16(cpu->bus.context, cpu->a[7] & 0x00FFFFFFu) << 16) |
                  cpu->bus.read16(cpu->bus.context, (cpu->a[7] + 2u) & 0x00FFFFFFu);
         cpu->a[7] += 4u;
         cpu->pc = target & 0x00FFFFFFu;
-        used = 16u;
-    } else if ((op & 0xF100u) == 0x7000u) { /* MOVEQ #imm8,Dn */
+        used = 16u; /* RTS */
+    } else if ((op & 0xF100u) == 0x7000u) {
         unsigned reg = (op >> 9) & 7u;
         cpu->d[reg] = (uint32_t)(int32_t)(int8_t)(op & 0xFFu);
         set_nz(cpu, cpu->d[reg]);
-        cpu->sr &= (uint16_t)~M68K_SR_CARRY;
-        used = 4u;
-    } else if ((op & 0xF000u) == 0x6000u) { /* BRA/Bcc, byte or word displacement */
+        cpu->sr &= (uint16_t)~(M68K_SR_CARRY | M68K_SR_OVERFLOW);
+        used = 4u; /* MOVEQ */
+    } else if ((op & 0xF000u) == 0x6000u) {
+        unsigned z, n, c, v;
+        int take;
         displacement = (int8_t)(op & 0xFFu);
         if ((op & 0xFFu) == 0u) displacement = (int16_t)fetch16(cpu);
         condition = (op >> 8) & 0x0Fu;
-        {
-            unsigned z = (cpu->sr & M68K_SR_ZERO) != 0u;
-            unsigned n = (cpu->sr & M68K_SR_NEGATIVE) != 0u;
-            unsigned c = (cpu->sr & M68K_SR_CARRY) != 0u;
-            unsigned v = 0u; /* overflow flag is not implemented in this slice */
-            int take = condition == 0u || condition == 1u ||
-                (condition == 2u && !c && !z) || (condition == 3u && (c || z)) ||
-                (condition == 4u && !c) || (condition == 5u && c) ||
-                (condition == 6u && !z) || (condition == 7u && z) ||
-                (condition == 8u && !v) || (condition == 9u && v) ||
-                (condition == 10u && !n) || (condition == 11u && n) ||
-                (condition == 12u && n == v) || (condition == 13u && n != v) ||
-                (condition == 14u && !z && n == v) || (condition == 15u && (z || n != v));
-            if (take) cpu->pc = (cpu->pc + (uint32_t)displacement) & 0x00FFFFFFu;
+        z = (cpu->sr & M68K_SR_ZERO) != 0u;
+        n = (cpu->sr & M68K_SR_NEGATIVE) != 0u;
+        c = (cpu->sr & M68K_SR_CARRY) != 0u;
+        v = (cpu->sr & M68K_SR_OVERFLOW) != 0u;
+        switch (condition) {
+            case 0u: case 1u: take = 1; break; /* BRA / BSR (BSR stack not implemented) */
+            case 2u: take = !c && !z; break;   /* BHI */
+            case 3u: take = c || z; break;     /* BLS */
+            case 4u: take = !c; break;         /* BCC */
+            case 5u: take = c; break;          /* BCS */
+            case 6u: take = !z; break;         /* BNE */
+            case 7u: take = z; break;          /* BEQ */
+            case 8u: take = !v; break;         /* BVC */
+            case 9u: take = v; break;          /* BVS */
+            case 10u: take = !n; break;        /* BPL */
+            case 11u: take = n; break;         /* BMI */
+            case 12u: take = n == v; break;    /* BGE */
+            case 13u: take = n != v; break;    /* BLT */
+            case 14u: take = !z && n == v; break; /* BGT */
+            default: take = z || n != v; break;   /* BLE */
         }
+        if (take) cpu->pc = (cpu->pc + (uint32_t)displacement) & 0x00FFFFFFu;
         used = 10u;
-    } else if (op == 0x4EF9u) { /* JMP (xxx).L */
-        cpu->pc = fetch32(cpu) & 0x00FFFFFFu;
+    } else if (op == 0x4EF9u) {
+        cpu->pc = fetch32(cpu) & 0x00FFFFFFu; /* JMP (xxx).L */
         used = 10u;
-    } else if (op == 0x4E72u) { /* STOP #imm */
+    } else if (op == 0x4E72u) {
         cpu->sr = fetch16(cpu);
-        cpu->stopped = 1u;
+        cpu->stopped = 1u; /* STOP #imm */
         used = 4u;
     } else {
         cpu->fault = 1u;
