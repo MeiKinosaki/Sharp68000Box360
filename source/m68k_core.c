@@ -146,14 +146,14 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         }
         cpu->d[reg] = (cpu->d[reg] & ~mask) | result;
         used = size == 2u ? 8u : 4u; /* ADDQ/SUBQ Dn */
-    } else if ((op & 0xF1F8u) == 0x4200u && ((op >> 6) & 3u) != 3u) {
+    } else if ((op & 0xFF00u) == 0x4200u && (op & 0x0038u) == 0u && ((op >> 6) & 3u) != 3u) {
         unsigned reg = op & 7u;
         unsigned size = (op >> 6) & 3u;
         uint32_t mask = size_mask(size);
         cpu->d[reg] &= ~mask;
         set_logic_flags(cpu, 0u, size);
         used = size == 2u ? 6u : 4u; /* CLR Dn */
-    } else if ((op & 0xF1F8u) == 0x4A00u && ((op >> 6) & 3u) != 3u) {
+    } else if ((op & 0xFF00u) == 0x4A00u && (op & 0x0038u) == 0u && ((op >> 6) & 3u) != 3u) {
         unsigned reg = op & 7u;
         unsigned size = (op >> 6) & 3u;
         set_logic_flags(cpu, cpu->d[reg], size);
