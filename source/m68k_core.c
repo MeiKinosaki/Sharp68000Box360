@@ -127,6 +127,17 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         set_logic_flags(cpu, cpu->d[reg], 2u);
         cpu->sr &= (uint16_t)~(M68K_SR_CARRY | M68K_SR_OVERFLOW);
         used = 4u; /* MOVEQ */
+    } else if ((op & 0xF1FFu) == 0x103Cu ||
+               (op & 0xF1FFu) == 0x303Cu ||
+               (op & 0xF1FFu) == 0x203Cu) {
+        unsigned reg = (op >> 9) & 7u;
+        unsigned size = ((op >> 12) & 0x0Fu) == 1u ? 0u :
+                        ((op >> 12) & 0x0Fu) == 3u ? 1u : 2u;
+        uint32_t mask = size_mask(size);
+        uint32_t immediate = size == 2u ? fetch32(cpu) : fetch16(cpu);
+        cpu->d[reg] = (cpu->d[reg] & ~mask) | (immediate & mask);
+        set_logic_flags(cpu, immediate, size);
+        used = size == 2u ? 12u : 8u; /* MOVE.B/W/L #imm,Dn */
     } else if ((op & 0xF000u) == 0x5000u && (op & 0x0038u) == 0u &&
                ((op >> 6) & 3u) != 3u) {
         unsigned reg = op & 7u;
