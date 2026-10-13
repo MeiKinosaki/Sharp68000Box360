@@ -89,7 +89,8 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         c = (cpu->sr & M68K_SR_CARRY) != 0u;
         v = (cpu->sr & M68K_SR_OVERFLOW) != 0u;
         switch (condition) {
-            case 0u: case 1u: take = 1; break; /* BRA / BSR (BSR stack not implemented) */
+            case 0u: take = 1; break; /* BRA */
+            case 1u: take = 1; break; /* BSR; push is handled below */
             case 2u: take = !c && !z; break;   /* BHI */
             case 3u: take = c || z; break;     /* BLS */
             case 4u: take = !c; break;         /* BCC */
@@ -104,6 +105,16 @@ unsigned m68k_step(m68k_cpu_t *cpu)
             case 13u: take = n != v; break;    /* BLT */
             case 14u: take = !z && n == v; break; /* BGT */
             default: take = z || n != v; break;   /* BLE */
+        }
+        if (take && condition == 1u) {
+            uint32_t return_pc = cpu->pc & 0x00FFFFFFu;
+            if (cpu->bus.write16 == 0) {
+                cpu->fault = 1u;
+                return 0u;
+            }
+            cpu->a[7] = (cpu->a[7] - 4u) & 0x00FFFFFFu;
+            cpu->bus.write16(cpu->bus.context, cpu->a[7], (uint16_t)(return_pc >> 16));
+            cpu->bus.write16(cpu->bus.context, (cpu->a[7] + 2u) & 0x00FFFFFFu, (uint16_t)return_pc);
         }
         if (take) cpu->pc = (cpu->pc + (uint32_t)displacement) & 0x00FFFFFFu;
         used = 10u;
