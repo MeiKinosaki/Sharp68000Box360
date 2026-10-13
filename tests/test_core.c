@@ -50,6 +50,32 @@ static void test_cpu_slice(void)
     free(state);
 }
 
+static void test_bsr_rts(void)
+{
+    x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
+    m68k_bus_t io;
+    m68k_cpu_t cpu;
+    assert(state != NULL);
+    x68000_bus_init(state);
+    io = x68000_bus_interface(state);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    io.write16(io.context, 0x100u, 0x6102u); /* BSR +2 */
+    io.write16(io.context, 0x102u, 0x4E71u); /* return address */
+    io.write16(io.context, 0x104u, 0x4E75u); /* RTS */
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+    assert(m68k_step(&cpu) == 10u);
+    assert(cpu.pc == 0x104u && cpu.a[7] == 0x7FCu);
+    assert(io.read16(io.context, 0x7FCu) == 0u);
+    assert(io.read16(io.context, 0x7FEu) == 0x102u);
+    assert(m68k_step(&cpu) == 16u);
+    assert(cpu.pc == 0x102u && cpu.a[7] == 0x800u);
+    free(state);
+}
+
 static void test_scheduler(void)
 {
     x68000_scheduler_t s;
@@ -63,6 +89,7 @@ int main(void)
 {
     test_bus();
     test_cpu_slice();
+    test_bsr_rts();
     test_scheduler();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
