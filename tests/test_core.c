@@ -46,7 +46,10 @@ static void test_cpu_slice(void)
     io.write16(io.context, 0x10Eu, 0x243Cu); /* MOVE.L #$89ABCDEF,D2 */
     io.write16(io.context, 0x110u, 0x89ABu);
     io.write16(io.context, 0x112u, 0xCDEFu);
-    io.write16(io.context, 0x114u, 0x60FEu); /* BRA to itself */
+    io.write16(io.context, 0x114u, 0x1602u); /* MOVE.B D2,D3 */
+    io.write16(io.context, 0x116u, 0x3842u); /* MOVE.W D2,D4 */
+    io.write16(io.context, 0x118u, 0x2A02u); /* MOVE.L D2,D5 */
+    io.write16(io.context, 0x11Au, 0x60FEu); /* BRA to itself */
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
     assert(cpu.a[7] == 0x800u && cpu.pc == 0x100u);
@@ -59,7 +62,12 @@ static void test_cpu_slice(void)
     assert(m68k_step(&cpu) == 4u && (cpu.sr & 0x0004u) != 0u);
     assert(m68k_step(&cpu) == 8u && (cpu.d[1] & 0xFFFFu) == 0x1234u);
     assert(m68k_step(&cpu) == 12u && cpu.d[2] == 0x89ABCDEFu);
-    assert(m68k_step(&cpu) == 10u && cpu.pc == 0x114u);
+    cpu.d[3] = 0xAABBCCDDu;
+    cpu.d[4] = 0x11223344u;
+    assert(m68k_step(&cpu) == 4u && cpu.d[3] == 0xAABBCCEFu);
+    assert(m68k_step(&cpu) == 4u && cpu.d[4] == 0x1122CDEFu);
+    assert(m68k_step(&cpu) == 4u && cpu.d[5] == 0x89ABCDEFu);
+    assert(m68k_step(&cpu) == 10u && cpu.pc == 0x11Au);
     assert(cpu.fault == 0u);
     free(state);
 }
