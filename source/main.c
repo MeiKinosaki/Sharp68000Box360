@@ -43,13 +43,6 @@ int main(void)
 
     x68000_bus_init(&machine_bus);
     install_smoke_program();
-    m68k_init(&machine_cpu, &(m68k_bus_t){
-        .context = &machine_bus,
-        .read8 = 0,
-        .read16 = 0,
-        .write8 = 0,
-        .write16 = 0
-    });
     {
         m68k_bus_t io = x68000_bus_interface(&machine_bus);
         m68k_init(&machine_cpu, &io);
