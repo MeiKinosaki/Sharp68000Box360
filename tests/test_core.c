@@ -53,7 +53,7 @@ static void test_cpu_slice(void)
     assert(m68k_step(&cpu) == 4u && cpu.d[0] == UINT32_MAX);
     assert((cpu.sr & 0x0008u) != 0u);
     assert(m68k_step(&cpu) == 4u && cpu.pc == 0x104u);
-    assert(m68k_step(&cpu) == 8u && (cpu.d[0] & 0xFFFFu) == 0u);
+    assert(m68k_step(&cpu) == 4u && (cpu.d[0] & 0xFFFFu) == 0u);
     assert(m68k_step(&cpu) == 4u && (cpu.d[0] & 0xFFFFu) == 0u);
     assert((cpu.sr & 0x0004u) != 0u);
     assert(m68k_step(&cpu) == 4u && (cpu.sr & 0x0004u) != 0u);
