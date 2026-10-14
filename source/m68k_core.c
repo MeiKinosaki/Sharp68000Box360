@@ -127,6 +127,42 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         set_logic_flags(cpu, cpu->d[reg], 2u);
         cpu->sr &= (uint16_t)~(M68K_SR_CARRY | M68K_SR_OVERFLOW);
         used = 4u; /* MOVEQ */
+    } else if (((op >> 6) & 7u) == 0u &&
+               (((op >> 3) & 7u) == 2u ||
+                ((op >> 3) & 7u) == 3u ||
+                ((op >> 3) & 7u) == 4u) &&
+               ((op >> 12) == 1u || (op >> 12) == 2u || (op >> 12) == 3u)) {
+        unsigned top = (op >> 12) & 0x0Fu;
+        unsigned size = top == 1u ? 0u : top == 3u ? 1u : 2u;
+        unsigned dst = (op >> 9) & 7u;
+        unsigned src_reg = op & 7u;
+        unsigned src_mode = (op >> 3) & 7u;
+        uint32_t address = cpu->a[src_reg];
+        uint32_t value;
+        uint32_t mask = size_mask(size);
+        if (src_mode == 4u) {
+            uint32_t step = (size == 0u && src_reg == 7u) ? 2u : (size == 2u ? 4u : (size == 1u ? 2u : 1u));
+            address = (address - step) & 0x00FFFFFFu;
+            cpu->a[src_reg] = address;
+        }
+        if (size == 0u) {
+            if (cpu->bus.read8 == 0) { cpu->fault = 1u; return 0u; }
+            value = cpu->bus.read8(cpu->bus.context, address);
+        } else if (size == 1u) {
+            if (cpu->bus.read16 == 0) { cpu->fault = 1u; return 0u; }
+            value = cpu->bus.read16(cpu->bus.context, address);
+        } else {
+            if (cpu->bus.read16 == 0) { cpu->fault = 1u; return 0u; }
+            value = ((uint32_t)cpu->bus.read16(cpu->bus.context, address) << 16) |
+                    cpu->bus.read16(cpu->bus.context, (address + 2u) & 0x00FFFFFFu);
+        }
+        cpu->d[dst] = (cpu->d[dst] & ~mask) | (value & mask);
+        if (src_mode == 3u) {
+            uint32_t step = (size == 0u && src_reg == 7u) ? 2u : (size == 2u ? 4u : (size == 1u ? 2u : 1u));
+            cpu->a[src_reg] = (cpu->a[src_reg] + step) & 0x00FFFFFFu;
+        }
+        set_logic_flags(cpu, value, size);
+        used = size == 2u ? 12u : 8u; /* MOVE.B/W/L (An), Dn; postincrement and predecrement */
     } else if ((op & 0xF1F8u) == 0x2040u ||
                (op & 0xF1F8u) == 0x3040u) {
         unsigned top = (op >> 12) & 0x0Fu;
