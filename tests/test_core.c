@@ -102,6 +102,40 @@ static void test_bsr_rts(void)
     free(state);
 }
 
+static void test_move_memory_modes(void)
+{
+    x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
+    m68k_bus_t io;
+    m68k_cpu_t cpu;
+    assert(state != NULL);
+    x68000_bus_init(state);
+    io = x68000_bus_interface(state);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    io.write16(io.context, 0x100u, 0x1C1Au); /* MOVE.B (A2)+,D6 */
+    io.write16(io.context, 0x102u, 0x3E1Au); /* MOVE.W (A2)+,D7 */
+    io.write16(io.context, 0x104u, 0x2A22u); /* MOVE.L -(A2),D5 */
+    io.write16(io.context, 0x300u, 0x7F12u);
+    io.write16(io.context, 0x304u, 0xABCDu);
+    io.write16(io.context, 0x306u, 0xEF01u);
+    io.write16(io.context, 0x308u, 0x2345u);
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+    cpu.a[2] = 0x300u;
+    assert(m68k_step(&cpu) == 8u);
+    assert((cpu.d[6] & 0xFFu) == 0x7Fu && cpu.a[2] == 0x301u);
+    cpu.a[2] = 0x304u;
+    assert(m68k_step(&cpu) == 8u);
+    assert((cpu.d[7] & 0xFFFFu) == 0xABCDu && cpu.a[2] == 0x306u);
+    cpu.a[2] = 0x30Cu;
+    assert(m68k_step(&cpu) == 12u);
+    assert(cpu.d[5] == 0x2345uEF01u && cpu.a[2] == 0x308u);
+    assert(cpu.fault == 0u);
+    free(state);
+}
+
 static void test_scheduler(void)
 {
     x68000_scheduler_t s;
@@ -116,6 +150,7 @@ int main(void)
     test_bus();
     test_cpu_slice();
     test_bsr_rts();
+    test_move_memory_modes();
     test_scheduler();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
