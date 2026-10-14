@@ -131,7 +131,7 @@ static void test_move_memory_modes(void)
     assert((cpu.d[7] & 0xFFFFu) == 0xABCDu && cpu.a[2] == 0x306u);
     cpu.a[2] = 0x30Cu;
     assert(m68k_step(&cpu) == 12u);
-    assert(cpu.d[5] == 0x2345uEF01u && cpu.a[2] == 0x308u);
+    assert(cpu.d[5] == 0xEF012345u && cpu.a[2] == 0x308u);
     assert(cpu.fault == 0u);
     free(state);
 }
