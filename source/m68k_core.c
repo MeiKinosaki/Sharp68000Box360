@@ -127,6 +127,17 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         set_logic_flags(cpu, cpu->d[reg], 2u);
         cpu->sr &= (uint16_t)~(M68K_SR_CARRY | M68K_SR_OVERFLOW);
         used = 4u; /* MOVEQ */
+    } else if ((op & 0xF1F8u) == 0x2040u ||
+               (op & 0xF1F8u) == 0x3040u) {
+        unsigned top = (op >> 12) & 0x0Fu;
+        unsigned dst = (op >> 9) & 7u;
+        unsigned src = op & 7u;
+        if (top == 3u) {
+            cpu->a[dst] = (uint32_t)(int32_t)(int16_t)(cpu->d[src] & 0xFFFFu);
+        } else {
+            cpu->a[dst] = cpu->d[src];
+        }
+        used = 4u; /* MOVEA.W/L Dn,An; flags are not affected */
     } else if ((op & 0xF1F8u) == 0x1000u ||
                (op & 0xF1F8u) == 0x2000u ||
                (op & 0xF1F8u) == 0x3000u) {
