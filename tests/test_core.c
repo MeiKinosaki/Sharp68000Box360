@@ -47,7 +47,7 @@ static void test_cpu_slice(void)
     io.write16(io.context, 0x110u, 0x89ABu);
     io.write16(io.context, 0x112u, 0xCDEFu);
     io.write16(io.context, 0x114u, 0x1602u); /* MOVE.B D2,D3 */
-    io.write16(io.context, 0x116u, 0x3842u); /* MOVE.W D2,D4 */
+    io.write16(io.context, 0x116u, 0x3802u); /* MOVE.W D2,D4 */
     io.write16(io.context, 0x118u, 0x2A02u); /* MOVE.L D2,D5 */
     io.write16(io.context, 0x11Au, 0x60FEu); /* BRA to itself */
     m68k_init(&cpu, &io);
