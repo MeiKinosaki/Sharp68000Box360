@@ -140,6 +140,33 @@ static void test_move_memory_modes(void)
     free(state);
 }
 
+static void test_move_to_memory(void)
+{
+    x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
+    m68k_bus_t io;
+    m68k_cpu_t cpu;
+    assert(state != NULL);
+    x68000_bus_init(state);
+    io = x68000_bus_interface(state);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    io.write16(io.context, 0x100u, 0x3682u); /* MOVE.W D2,(A3) */
+    io.write16(io.context, 0x102u, 0x26C2u); /* MOVE.L D2,(A3)+ */
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+    cpu.d[2] = 0x89ABCDEFu;
+    cpu.a[3] = 0x400u;
+    assert(m68k_step(&cpu) == 8u);
+    assert(io.read16(io.context, 0x400u) == 0xCDEFu && cpu.a[3] == 0x400u);
+    assert(m68k_step(&cpu) == 12u);
+    assert(io.read16(io.context, 0x400u) == 0x89ABu);
+    assert(io.read16(io.context, 0x402u) == 0xCDEFu && cpu.a[3] == 0x404u);
+    assert(cpu.fault == 0u);
+    free(state);
+}
+
 static void test_scheduler(void)
 {
     x68000_scheduler_t s;
@@ -155,6 +182,7 @@ int main(void)
     test_cpu_slice();
     test_bsr_rts();
     test_move_memory_modes();
+    test_move_to_memory();
     test_scheduler();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
