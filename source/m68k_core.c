@@ -163,6 +163,38 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         }
         set_logic_flags(cpu, value, size);
         used = size == 2u ? 12u : 8u; /* MOVE.B/W/L (An), Dn; postincrement and predecrement */
+    } else if (((op >> 12) == 1u || (op >> 12) == 2u || (op >> 12) == 3u) &&
+               ((op >> 3) & 7u) == 0u &&
+               (((op >> 6) & 7u) == 2u || ((op >> 6) & 7u) == 3u || ((op >> 6) & 7u) == 4u)) {
+        unsigned top = (op >> 12) & 0x0Fu;
+        unsigned size = top == 1u ? 0u : top == 3u ? 1u : 2u;
+        unsigned src = op & 7u;
+        unsigned dst_reg = (op >> 9) & 7u;
+        unsigned dst_mode = (op >> 6) & 7u;
+        uint32_t address = cpu->a[dst_reg];
+        uint32_t value = cpu->d[src] & size_mask(size);
+        if (dst_mode == 4u) {
+            uint32_t step = (size == 0u && dst_reg == 7u) ? 2u : (size == 2u ? 4u : (size == 1u ? 2u : 1u));
+            address = (address - step) & 0x00FFFFFFu;
+            cpu->a[dst_reg] = address;
+        }
+        if (size == 0u) {
+            if (cpu->bus.write8 == 0) { cpu->fault = 1u; return 0u; }
+            cpu->bus.write8(cpu->bus.context, address, (uint8_t)value);
+        } else if (size == 1u) {
+            if (cpu->bus.write16 == 0) { cpu->fault = 1u; return 0u; }
+            cpu->bus.write16(cpu->bus.context, address, (uint16_t)value);
+        } else {
+            if (cpu->bus.write16 == 0) { cpu->fault = 1u; return 0u; }
+            cpu->bus.write16(cpu->bus.context, address, (uint16_t)(value >> 16));
+            cpu->bus.write16(cpu->bus.context, (address + 2u) & 0x00FFFFFFu, (uint16_t)value);
+        }
+        if (dst_mode == 3u) {
+            uint32_t step = (size == 0u && dst_reg == 7u) ? 2u : (size == 2u ? 4u : (size == 1u ? 2u : 1u));
+            cpu->a[dst_reg] = (cpu->a[dst_reg] + step) & 0x00FFFFFFu;
+        }
+        set_logic_flags(cpu, value, size);
+        used = size == 2u ? 12u : 8u; /* MOVE.B/W/L Dn,(An), postincrement or predecrement */
     } else if ((op & 0xF1F8u) == 0x2040u ||
                (op & 0xF1F8u) == 0x3040u) {
         unsigned top = (op >> 12) & 0x0Fu;
