@@ -154,6 +154,7 @@ static void test_move_to_memory(void)
     io.write16(io.context, 6u, 0x0100u);
     io.write16(io.context, 0x100u, 0x3682u); /* MOVE.W D2,(A3) */
     io.write16(io.context, 0x102u, 0x26C2u); /* MOVE.L D2,(A3)+ */
+    io.write16(io.context, 0x104u, 0x3702u); /* MOVE.W D2,-(A3) */
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
     cpu.d[2] = 0x89ABCDEFu;
@@ -163,6 +164,9 @@ static void test_move_to_memory(void)
     assert(m68k_step(&cpu) == 12u);
     assert(io.read16(io.context, 0x400u) == 0x89ABu);
     assert(io.read16(io.context, 0x402u) == 0xCDEFu && cpu.a[3] == 0x404u);
+    cpu.a[3] = 0x500u;
+    assert(m68k_step(&cpu) == 8u);
+    assert(io.read16(io.context, 0x4FEu) == 0xCDEFu && cpu.a[3] == 0x4FEu);
     assert(cpu.fault == 0u);
     free(state);
 }
