@@ -119,8 +119,9 @@ static void test_move_memory_modes(void)
     io.write16(io.context, 0x104u, 0x2A22u); /* MOVE.L -(A2),D5 */
     io.write16(io.context, 0x300u, 0x7F12u);
     io.write16(io.context, 0x304u, 0xABCDu);
-    io.write16(io.context, 0x306u, 0xEF01u);
-    io.write16(io.context, 0x308u, 0x2345u);
+    io.write16(io.context, 0x306u, 0xCAFEu);
+    io.write16(io.context, 0x308u, 0xEF01u);
+    io.write16(io.context, 0x30Au, 0x2345u);
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
     cpu.a[2] = 0x300u;
