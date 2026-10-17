@@ -218,6 +218,12 @@ static void test_scheduler(void)
     assert(x68000_scheduler_begin_frame(&s) == 200000u);
     x68000_scheduler_account(&s, 20u);
     assert(s.frame_number == 1u && s.cpu_cycles == 20u && s.master_ticks == 20u);
+
+    x68000_scheduler_init(&s, 10u, 3u);
+    assert(x68000_scheduler_begin_frame(&s) == 3u);
+    assert(x68000_scheduler_begin_frame(&s) == 3u);
+    assert(x68000_scheduler_begin_frame(&s) == 4u);
+    assert(x68000_scheduler_begin_frame(&s) == 3u);
 }
 
 int main(void)
