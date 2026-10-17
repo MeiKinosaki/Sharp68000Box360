@@ -21,6 +21,10 @@ static void test_bus(void)
     assert(io.read16(io.context, X68000_ROM_BASE) == 0x1234u);
     io.write8(io.context, X68000_ROM_BASE, 0u);
     assert(io.read8(io.context, X68000_ROM_BASE) == 0x12u);
+    assert(state->ignored_writes == 1u); /* ROM remains read-only */
+
+    io.write8(io.context, 0x01000100u, 0x5Au); /* 24-bit address bus alias */
+    assert(io.read8(io.context, 0x000100u) == 0x5Au);
     assert(x68000_bus_load_rom(state, rom, X68000_ROM_SIZE + 1u) == -1);
     (void)io.read8(io.context, 0x200000u);
     assert(state->unmapped_reads == 1u);
