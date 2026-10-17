@@ -228,6 +228,8 @@ static void test_lea_absolute_modes(void)
     io.write16(io.context, 0x104u, 0x45F9u); /* LEA ($00000600).L,A2 */
     io.write16(io.context, 0x106u, 0x0000u);
     io.write16(io.context, 0x108u, 0x0600u);
+    io.write16(io.context, 0x10Au, 0x47FAu); /* LEA d16(PC),A3 */
+    io.write16(io.context, 0x10Cu, 0x0010u); /* PC base 0x10C -> 0x11C */
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
     cpu.sr = 0x2015u;
@@ -235,6 +237,8 @@ static void test_lea_absolute_modes(void)
     assert(cpu.a[1] == 0x500u && cpu.sr == 0x2015u);
     assert(m68k_step(&cpu) == 12u);
     assert(cpu.a[2] == 0x600u && cpu.sr == 0x2015u);
+    assert(m68k_step(&cpu) == 8u);
+    assert(cpu.a[3] == 0x11Cu && cpu.sr == 0x2015u);
     assert(cpu.fault == 0u);
     free(state);
 }
