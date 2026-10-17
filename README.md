@@ -8,10 +8,10 @@ Projeto experimental de emulador do **Sharp X68000 para Xbox 360 (RGH/JTAG)**, u
 
 - Fluxo de compilação na nuvem com a imagem `free60/libxenon`.
 - Geração e publicação de artefatos ELF quando a execução conclui com sucesso.
-- Núcleo Motorola 68000 experimental com uma fatia limitada de instruções: NOP, RTS, MOVEQ, MOVE.B/W/L entre registradores de dados, alguns modos de MOVE com `(An)`, `(An)+`, `-(An)` e endereçamento absoluto `.W/.L`, MOVEA.W/L, LEA absoluto `.W/.L`, MOVE imediato para Dn, ADDQ/SUBQ Dn, CLR/TST Dn, BRA/Bcc, BSR, JMP absoluto e STOP. A cobertura é parcial; ciclos, flags e modos de endereçamento ainda precisam de auditoria.
+- Núcleo Motorola 68000 experimental com uma fatia limitada de instruções: NOP, RTS, MOVEQ, MOVE.B/W/L entre registradores de dados, alguns modos de MOVE com `(An)`, `(An)+`, `-(An)` e endereçamento absoluto `.W/.L`, MOVEA.W/L, LEA absoluto `.W/.L` e relativo ao PC por deslocamento de 16 bits, MOVE imediato para Dn, ADDQ/SUBQ Dn, CLR/TST Dn, BRA/Bcc, BSR, JMP absoluto e STOP. A cobertura é parcial; ciclos, flags e modos de endereçamento ainda precisam de auditoria.
 - Barramento experimental com 1 MiB de RAM, janela de ROM de 256 KiB e contadores de acessos não mapeados/escritas ignoradas.
 - Scheduler inicial com orçamento de ciclos por quadro e distribuição do resto da divisão para reduzir deriva entre quadros.
-- Testes host para barramento, reset, instruções básicas, BSR/RTS, MOVE com acesso à memória e endereçamento absoluto curto/longo, LEA absoluto `.W/.L` com verificação de flags, e distribuição fracionária de ciclos do scheduler.
+- Testes host para barramento, reset, instruções básicas, BSR/RTS, MOVE com acesso à memória e endereçamento absoluto curto/longo, LEA absoluto `.W/.L` e relativo ao PC, com verificação de flags, e distribuição fracionária de ciclos do scheduler.
 
 ## O que ainda falta
 
