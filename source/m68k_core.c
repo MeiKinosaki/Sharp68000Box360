@@ -128,9 +128,8 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         cpu->sr &= (uint16_t)~(M68K_SR_CARRY | M68K_SR_OVERFLOW);
         used = 4u; /* MOVEQ */
     } else if (((op >> 6) & 7u) == 0u &&
-               (((op >> 3) & 7u) == 2u ||
-                ((op >> 3) & 7u) == 3u ||
-                ((op >> 3) & 7u) == 4u) &&
+               ((((op >> 3) & 7u) >= 2u && ((op >> 3) & 7u) <= 4u) ||
+                (((op >> 3) & 7u) == 7u && (op & 7u) <= 1u)) &&
                ((op >> 12) == 1u || (op >> 12) == 2u || (op >> 12) == 3u)) {
         unsigned top = (op >> 12) & 0x0Fu;
         unsigned size = top == 1u ? 0u : top == 3u ? 1u : 2u;
@@ -140,6 +139,12 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         uint32_t address = cpu->a[src_reg];
         uint32_t value;
         uint32_t mask = size_mask(size);
+        if (src_mode == 7u) {
+            address = src_reg == 0u
+                ? (uint32_t)(int32_t)(int16_t)fetch16(cpu)
+                : fetch32(cpu);
+            address &= 0x00FFFFFFu;
+        }
         if (src_mode == 4u) {
             uint32_t step = (size == 0u && src_reg == 7u) ? 2u : (size == 2u ? 4u : (size == 1u ? 2u : 1u));
             address = (address - step) & 0x00FFFFFFu;
@@ -162,10 +167,13 @@ unsigned m68k_step(m68k_cpu_t *cpu)
             cpu->a[src_reg] = (cpu->a[src_reg] + step) & 0x00FFFFFFu;
         }
         set_logic_flags(cpu, value, size);
-        used = size == 2u ? 12u : 8u; /* MOVE.B/W/L (An), Dn; postincrement and predecrement */
+        used = src_mode == 7u
+            ? (src_reg == 0u ? (size == 2u ? 16u : 12u) : (size == 2u ? 20u : 16u))
+            : (size == 2u ? 12u : 8u); /* MOVE from (An), +/-An, or absolute short/long to Dn */
     } else if (((op >> 12) == 1u || (op >> 12) == 2u || (op >> 12) == 3u) &&
                ((op >> 3) & 7u) == 0u &&
-               (((op >> 6) & 7u) == 2u || ((op >> 6) & 7u) == 3u || ((op >> 6) & 7u) == 4u)) {
+               ((((op >> 6) & 7u) >= 2u && ((op >> 6) & 7u) <= 4u) ||
+                (((op >> 6) & 7u) == 7u && ((op >> 9) & 7u) <= 1u))) {
         unsigned top = (op >> 12) & 0x0Fu;
         unsigned size = top == 1u ? 0u : top == 3u ? 1u : 2u;
         unsigned src = op & 7u;
@@ -173,6 +181,12 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         unsigned dst_mode = (op >> 6) & 7u;
         uint32_t address = cpu->a[dst_reg];
         uint32_t value = cpu->d[src] & size_mask(size);
+        if (dst_mode == 7u) {
+            address = dst_reg == 0u
+                ? (uint32_t)(int32_t)(int16_t)fetch16(cpu)
+                : fetch32(cpu);
+            address &= 0x00FFFFFFu;
+        }
         if (dst_mode == 4u) {
             uint32_t step = (size == 0u && dst_reg == 7u) ? 2u : (size == 2u ? 4u : (size == 1u ? 2u : 1u));
             address = (address - step) & 0x00FFFFFFu;
@@ -194,7 +208,9 @@ unsigned m68k_step(m68k_cpu_t *cpu)
             cpu->a[dst_reg] = (cpu->a[dst_reg] + step) & 0x00FFFFFFu;
         }
         set_logic_flags(cpu, value, size);
-        used = size == 2u ? 12u : 8u; /* MOVE.B/W/L Dn,(An), postincrement or predecrement */
+        used = dst_mode == 7u
+            ? (dst_reg == 0u ? (size == 2u ? 16u : 12u) : (size == 2u ? 20u : 16u))
+            : (size == 2u ? 12u : 8u); /* MOVE Dn to (An), +/-An, or absolute short/long */
     } else if ((op & 0xF1F8u) == 0x2040u ||
                (op & 0xF1F8u) == 0x3040u) {
         unsigned top = (op >> 12) & 0x0Fu;
