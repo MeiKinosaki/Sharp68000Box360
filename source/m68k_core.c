@@ -99,7 +99,7 @@ int m68k_reset(m68k_cpu_t *cpu)
 /*
  * Experimental interpreter slice. Supported instructions:
  * NOP, RTS, MOVEQ, MOVE data-register and selected memory forms,
- * MOVEA.W/L Dn,An, LEA absolute short/long, BRA/Bcc, BSR,
+ * MOVEA.W/L Dn,An, LEA absolute short/long and PC-relative displacement, BRA/Bcc, BSR,
  * absolute JMP, STOP, ADDQ/SUBQ on Dn, CLR Dn and TST Dn.
  * Unsupported opcodes fault.
  * This is intentionally not presented as a complete 68000 core.
