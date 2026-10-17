@@ -10,6 +10,8 @@ typedef struct {
     uint32_t cpu_hz;
     uint32_t frame_hz;
     uint32_t frame_cycle_budget;
+    uint32_t frame_cycle_remainder;
+    uint32_t frame_remainder_accumulator;
 } x68000_scheduler_t;
 
 void x68000_scheduler_init(x68000_scheduler_t *scheduler, uint32_t cpu_hz, uint32_t frame_hz);
