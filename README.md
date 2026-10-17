@@ -8,14 +8,14 @@ Projeto experimental de emulador do **Sharp X68000 para Xbox 360 (RGH/JTAG)**, u
 
 - Fluxo de compilação na nuvem com a imagem `free60/libxenon`.
 - Geração e publicação de artefatos ELF quando a execução conclui com sucesso.
-- Núcleo Motorola 68000 experimental com uma pequena fatia de instruções: NOP, RTS, MOVEQ, BRA/Bcc, BSR, JMP absoluto e STOP.
+- Núcleo Motorola 68000 experimental com uma fatia limitada de instruções: NOP, RTS, MOVEQ, MOVE.B/W/L entre registradores de dados, alguns modos de MOVE com `(An)`, `(An)+`, `-(An)` e endereçamento absoluto `.W/.L`, MOVEA.W/L, MOVE imediato para Dn, ADDQ/SUBQ Dn, CLR/TST Dn, BRA/Bcc, BSR, JMP absoluto e STOP. A cobertura é parcial; ciclos, flags e modos de endereçamento ainda precisam de auditoria.
 - Barramento experimental com 1 MiB de RAM, janela de ROM de 256 KiB e contadores de acessos não mapeados/escritas ignoradas.
 - Scheduler inicial por orçamento de ciclos por quadro.
-- Testes host para barramento, reset, instruções básicas, BSR/RTS e scheduler.
+- Testes host para barramento, reset, instruções básicas, BSR/RTS, MOVE com acesso à memória e endereçamento absoluto curto/longo, e scheduler.
 
 ## O que ainda falta
 
-- Conjunto completo de instruções e exceções do Motorola 68000.
+- Conjunto completo de instruções e exceções do Motorola 68000, incluindo auditoria sistemática de flags, ciclos, alinhamento e falhas de barramento.
 - Mapa de memória real do X68000, MMIO e controladores.
 - Carga de IPL/ROMs e mídia de jogos.
 - Vídeo, áudio, teclado, armazenamento, temporização de dispositivos e interrupções.
