@@ -319,13 +319,22 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         if (take) cpu->pc = (cpu->pc + (uint32_t)displacement) & 0x00FFFFFFu;
         used = 10u;
     } else if ((op & 0xF1FFu) == 0x41F8u ||
-               (op & 0xF1FFu) == 0x41F9u) {
+               (op & 0xF1FFu) == 0x41F9u ||
+               (op & 0xF1FFu) == 0x41FAu) {
         unsigned dst = (op >> 9) & 7u;
-        uint32_t address = (op & 1u) == 0u
-            ? (uint32_t)(int32_t)(int16_t)fetch16(cpu)
-            : fetch32(cpu);
-        cpu->a[dst] = address & 0x00FFFFFFu;
-        used = (op & 1u) == 0u ? 8u : 12u; /* LEA absolute short/long, flags unchanged */
+        uint32_t address;
+        if ((op & 7u) == 2u) {
+            uint32_t pc_base = cpu->pc;
+            int16_t offset = (int16_t)fetch16(cpu);
+            address = pc_base + (int32_t)offset;
+            used = 8u; /* LEA d16(PC),An */
+        } else {
+            address = (op & 1u) == 0u
+                ? (uint32_t)(int32_t)(int16_t)fetch16(cpu)
+                : fetch32(cpu);
+            used = (op & 1u) == 0u ? 8u : 12u; /* LEA absolute short/long */
+        }
+        cpu->a[dst] = address & 0x00FFFFFFu; /* LEA does not change flags */
     } else if (op == 0x4EF9u) {
         cpu->pc = fetch32(cpu) & 0x00FFFFFFu; /* JMP (xxx).L */
         used = 10u;
