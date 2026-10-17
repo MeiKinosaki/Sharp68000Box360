@@ -123,6 +123,27 @@ static void test_quick_arithmetic_flags(void)
     free(state);
 }
 
+static void test_illegal_opcode_fault(void)
+{
+    x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
+    m68k_bus_t io;
+    m68k_cpu_t cpu;
+    assert(state != NULL);
+    x68000_bus_init(state);
+    io = x68000_bus_interface(state);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    io.write16(io.context, 0x100u, 0xFFFFu); /* unsupported opcode in this slice */
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+    assert(m68k_step(&cpu) == 0u);
+    assert(cpu.fault == 1u && cpu.pc == 0x102u && cpu.cycles == 0u);
+    assert(m68k_step(&cpu) == 0u && cpu.pc == 0x102u);
+    free(state);
+}
+
 static void test_bsr_rts(void)
 {
     x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
@@ -314,6 +335,7 @@ int main(void)
     test_bus();
     test_cpu_slice();
     test_quick_arithmetic_flags();
+    test_illegal_opcode_fault();
     test_bsr_rts();
     test_move_memory_modes();
     test_move_to_memory();
