@@ -123,6 +123,36 @@ static void test_quick_arithmetic_flags(void)
     free(state);
 }
 
+static void test_quick_address_registers(void)
+{
+    x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
+    m68k_bus_t io;
+    m68k_cpu_t cpu;
+    assert(state != NULL);
+    x68000_bus_init(state);
+    io = x68000_bus_interface(state);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    io.write16(io.context, 0x100u, 0x5249u); /* ADDQ.W #1,A1 */
+    io.write16(io.context, 0x102u, 0x558Au); /* SUBQ.L #2,A2 */
+    io.write16(io.context, 0x104u, 0x504Bu); /* ADDQ.W #8,A3 */
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+    cpu.sr = 0x2015u;
+    cpu.a[1] = 0x0000FFFFu;
+    cpu.a[2] = 0x00001000u;
+    cpu.a[3] = 0x00000010u;
+    assert(m68k_step(&cpu) == 8u && cpu.a[1] == 0x00010000u);
+    assert(cpu.sr == 0x2015u);
+    assert(m68k_step(&cpu) == 8u && cpu.a[2] == 0x00000FFEu);
+    assert(cpu.sr == 0x2015u);
+    assert(m68k_step(&cpu) == 8u && cpu.a[3] == 0x00000018u);
+    assert(cpu.sr == 0x2015u && cpu.fault == 0u);
+    free(state);
+}
+
 static void test_illegal_opcode_fault(void)
 {
     x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
@@ -335,6 +365,7 @@ int main(void)
     test_bus();
     test_cpu_slice();
     test_quick_arithmetic_flags();
+    test_quick_address_registers();
     test_illegal_opcode_fault();
     test_bsr_rts();
     test_move_memory_modes();
