@@ -189,9 +189,9 @@ static void test_move_absolute_modes(void)
     io.write16(io.context, 0x104u, 0x2039u); /* MOVE.L ($00000520).L,D1 */
     io.write16(io.context, 0x106u, 0x0000u);
     io.write16(io.context, 0x108u, 0x0520u);
-    io.write16(io.context, 0x10Au, 0x35C2u); /* MOVE.W D2,($0502).W */
+    io.write16(io.context, 0x10Au, 0x31C2u); /* MOVE.W D2,($0502).W */
     io.write16(io.context, 0x10Cu, 0x0502u);
-    io.write16(io.context, 0x10Eu, 0x25C2u); /* MOVE.L D2,($00000524).L */
+    io.write16(io.context, 0x10Eu, 0x21C2u); /* MOVE.L D2,($00000524).L */
     io.write16(io.context, 0x110u, 0x0000u);
     io.write16(io.context, 0x112u, 0x0524u);
 
