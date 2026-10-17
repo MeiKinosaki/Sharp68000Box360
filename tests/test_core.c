@@ -79,6 +79,46 @@ static void test_cpu_slice(void)
     free(state);
 }
 
+static void test_quick_arithmetic_flags(void)
+{
+    x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
+    m68k_bus_t io;
+    m68k_cpu_t cpu;
+    assert(state != NULL);
+    x68000_bus_init(state);
+    io = x68000_bus_interface(state);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    io.write16(io.context, 0x100u, 0x5200u); /* ADDQ.B #1,D0 */
+    io.write16(io.context, 0x102u, 0x5200u);
+    io.write16(io.context, 0x104u, 0x5301u); /* SUBQ.B #1,D1 */
+    io.write16(io.context, 0x106u, 0x5301u);
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+
+    cpu.d[0] = 0x7Fu;
+    assert(m68k_step(&cpu) == 4u && (cpu.d[0] & 0xFFu) == 0x80u);
+    assert((cpu.sr & 0x0008u) != 0u); /* N */
+    assert((cpu.sr & 0x0002u) != 0u); /* V */
+    assert((cpu.sr & 0x0011u) == 0u); /* no C or X */
+
+    cpu.d[0] = 0xFFu;
+    assert(m68k_step(&cpu) == 4u && (cpu.d[0] & 0xFFu) == 0u);
+    assert((cpu.sr & 0x0015u) == 0x0015u); /* X, Z, C */
+
+    cpu.d[1] = 0u;
+    assert(m68k_step(&cpu) == 4u && (cpu.d[1] & 0xFFu) == 0xFFu);
+    assert((cpu.sr & 0x0019u) == 0x0019u); /* X, N, C */
+
+    cpu.d[1] = 1u;
+    assert(m68k_step(&cpu) == 4u && (cpu.d[1] & 0xFFu) == 0u);
+    assert((cpu.sr & 0x0015u) == 0x0004u); /* Z; no X or C */
+    assert(cpu.fault == 0u);
+    free(state);
+}
+
 static void test_bsr_rts(void)
 {
     x68000_bus_state_t *state = (x68000_bus_state_t *)calloc(1, sizeof(*state));
@@ -262,6 +302,7 @@ int main(void)
 {
     test_bus();
     test_cpu_slice();
+    test_quick_arithmetic_flags();
     test_bsr_rts();
     test_move_memory_modes();
     test_move_to_memory();
