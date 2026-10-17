@@ -317,21 +317,7 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         if (take) cpu->pc = (cpu->pc + (uint32_t)displacement) & 0x00FFFFFFu;
         used = 10u;
     } else if ((op & 0xF1FFu) == 0x41F8u ||
-               (op & 0xF1FFu) == 0x41F9u ||
-               (op & 0xF1FFu) == 0x43F8u ||
-               (op & 0xF1FFu) == 0x43F9u ||
-               (op & 0xF1FFu) == 0x45F8u ||
-               (op & 0xF1FFu) == 0x45F9u ||
-               (op & 0xF1FFu) == 0x47F8u ||
-               (op & 0xF1FFu) == 0x47F9u ||
-               (op & 0xF1FFu) == 0x49F8u ||
-               (op & 0xF1FFu) == 0x49F9u ||
-               (op & 0xF1FFu) == 0x4BF8u ||
-               (op & 0xF1FFu) == 0x4BF9u ||
-               (op & 0xF1FFu) == 0x4DF8u ||
-               (op & 0xF1FFu) == 0x4DF9u ||
-               (op & 0xF1FFu) == 0x4FF8u ||
-               (op & 0xF1FFu) == 0x4FF9u) {
+               (op & 0xF1FFu) == 0x41F9u) {
         unsigned dst = (op >> 9) & 7u;
         uint32_t address = (op & 1u) == 0u
             ? (uint32_t)(int32_t)(int16_t)fetch16(cpu)
