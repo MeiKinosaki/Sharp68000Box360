@@ -248,25 +248,33 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         cpu->d[reg] = (cpu->d[reg] & ~mask) | (immediate & mask);
         set_logic_flags(cpu, immediate, size);
         used = size == 2u ? 12u : 8u; /* MOVE.B/W/L #imm,Dn */
-    } else if ((op & 0xF000u) == 0x5000u && (op & 0x0038u) == 0u &&
-               ((op >> 6) & 3u) != 3u) {
+    } else if ((op & 0xF000u) == 0x5000u &&
+               (((op >> 3) & 7u) == 0u || ((op >> 3) & 7u) == 1u) &&
+               ((op >> 6) & 3u) != 3u &&
+               !(((op >> 3) & 7u) == 1u && ((op >> 6) & 3u) == 0u)) {
         unsigned reg = op & 7u;
         unsigned size = (op >> 6) & 3u;
+        unsigned ea_mode = (op >> 3) & 7u;
         uint32_t mask = size_mask(size);
         uint32_t quick = (op >> 9) & 7u;
-        uint32_t old_value = cpu->d[reg] & mask;
+        uint32_t old_value = ea_mode == 1u ? cpu->a[reg] : (cpu->d[reg] & mask);
         uint32_t result;
         int subtract = (op & 0x0100u) != 0u;
         if (quick == 0u) quick = 8u;
         if (subtract) {
-            result = (old_value - quick) & mask;
-            set_sub_flags(cpu, old_value, quick, result, size);
+            result = (old_value - quick) & (ea_mode == 1u ? 0xFFFFFFFFu : mask);
+            if (ea_mode == 0u) set_sub_flags(cpu, old_value, quick, result, size);
         } else {
-            result = (old_value + quick) & mask;
-            set_add_flags(cpu, old_value, quick, result, size);
+            result = (old_value + quick) & (ea_mode == 1u ? 0xFFFFFFFFu : mask);
+            if (ea_mode == 0u) set_add_flags(cpu, old_value, quick, result, size);
         }
-        cpu->d[reg] = (cpu->d[reg] & ~mask) | result;
-        used = size == 2u ? 8u : 4u; /* ADDQ/SUBQ Dn */
+        if (ea_mode == 1u) {
+            cpu->a[reg] = size == 1u ? (uint32_t)(int32_t)(int16_t)result : result;
+            used = 8u; /* ADDQ/SUBQ.W/L An; condition codes are unaffected */
+        } else {
+            cpu->d[reg] = (cpu->d[reg] & ~mask) | result;
+            used = size == 2u ? 8u : 4u; /* ADDQ/SUBQ Dn */
+        }
     } else if ((op & 0xFF00u) == 0x4200u && (op & 0x0038u) == 0u && ((op >> 6) & 3u) != 3u) {
         unsigned reg = op & 7u;
         unsigned size = (op >> 6) & 3u;
