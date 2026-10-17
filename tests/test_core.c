@@ -296,6 +296,13 @@ static void test_scheduler(void)
     assert(x68000_scheduler_begin_frame(&s) == 3u);
     assert(x68000_scheduler_begin_frame(&s) == 4u);
     assert(x68000_scheduler_begin_frame(&s) == 3u);
+
+    x68000_scheduler_init(&s, 2u, 5u);
+    assert(x68000_scheduler_begin_frame(&s) == 0u);
+    assert(x68000_scheduler_begin_frame(&s) == 0u);
+    assert(x68000_scheduler_begin_frame(&s) == 1u);
+    assert(x68000_scheduler_begin_frame(&s) == 0u);
+    assert(x68000_scheduler_begin_frame(&s) == 1u);
 }
 
 int main(void)
