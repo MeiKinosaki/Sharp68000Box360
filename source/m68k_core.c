@@ -49,11 +49,12 @@ static void set_add_flags(m68k_cpu_t *cpu, uint32_t lhs, uint32_t rhs,
     uint32_t sign = size_sign(size);
     uint64_t wide = (uint64_t)(lhs & mask) + (uint64_t)(rhs & mask);
     uint32_t out = result & mask;
-    cpu->sr &= (uint16_t)~M68K_SR_NZVC;
+    cpu->sr &= (uint16_t)~(M68K_SR_NZVC | M68K_SR_EXTEND);
     if (out == 0u) cpu->sr |= M68K_SR_ZERO;
     if ((out & sign) != 0u) cpu->sr |= M68K_SR_NEGATIVE;
     if (((~(lhs ^ rhs) & (lhs ^ out)) & sign) != 0u) cpu->sr |= M68K_SR_OVERFLOW;
-    if ((wide & ((uint64_t)mask + 1u)) != 0u) cpu->sr |= M68K_SR_CARRY;
+    if ((wide & ((uint64_t)mask + 1u)) != 0u)
+        cpu->sr |= (M68K_SR_CARRY | M68K_SR_EXTEND);
 }
 
 static void set_sub_flags(m68k_cpu_t *cpu, uint32_t lhs, uint32_t rhs,
@@ -62,11 +63,11 @@ static void set_sub_flags(m68k_cpu_t *cpu, uint32_t lhs, uint32_t rhs,
     uint32_t mask = size_mask(size);
     uint32_t sign = size_sign(size);
     uint32_t a = lhs & mask, b = rhs & mask, out = result & mask;
-    cpu->sr &= (uint16_t)~M68K_SR_NZVC;
+    cpu->sr &= (uint16_t)~(M68K_SR_NZVC | M68K_SR_EXTEND);
     if (out == 0u) cpu->sr |= M68K_SR_ZERO;
     if ((out & sign) != 0u) cpu->sr |= M68K_SR_NEGATIVE;
     if ((((a ^ b) & (a ^ out)) & sign) != 0u) cpu->sr |= M68K_SR_OVERFLOW;
-    if (b > a) cpu->sr |= M68K_SR_CARRY;
+    if (b > a) cpu->sr |= (M68K_SR_CARRY | M68K_SR_EXTEND);
 }
 
 static void set_logic_flags(m68k_cpu_t *cpu, uint32_t value, unsigned size)
