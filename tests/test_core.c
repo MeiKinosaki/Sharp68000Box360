@@ -13,6 +13,7 @@ static void test_bus(void)
     m68k_bus_t io;
     uint8_t rom[4] = {0x12, 0x34, 0x56, 0x78};
     assert(state != NULL);
+    x68000_bus_init(0); /* null-safe initialization */
     x68000_bus_init(state);
     io = x68000_bus_interface(state);
     io.write16(io.context, 0x100u, 0xABCDu);
@@ -26,6 +27,7 @@ static void test_bus(void)
     io.write8(io.context, 0x01000100u, 0x5Au); /* 24-bit address bus alias */
     assert(io.read8(io.context, 0x000100u) == 0x5Au);
     assert(x68000_bus_load_rom(state, rom, X68000_ROM_SIZE + 1u) == -1);
+    assert(io.read16(io.context, X68000_ROM_BASE) == 0x1234u); /* failed load preserves prior ROM */
     (void)io.read8(io.context, 0x200000u);
     assert(state->unmapped_reads == 1u);
     free(state);
