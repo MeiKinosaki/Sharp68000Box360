@@ -100,7 +100,7 @@ int m68k_reset(m68k_cpu_t *cpu)
 /*
  * Experimental interpreter slice. Supported instructions:
  * NOP, RTS, MOVEQ, MOVE data-register and selected memory forms,
- * MOVEA.W/L Dn,An, LEA (An), d16(An), absolute short/long and PC-relative displacement, BRA/Bcc, BSR,
+ * MOVEA.W/L Dn,An, LEA (An), d16(An), indexed d8(An,Xn)/d8(PC,Xn), absolute short/long and PC-relative displacement, BRA/Bcc, BSR,
  * absolute JMP, STOP, ADDQ/SUBQ on Dn, CLR Dn and TST Dn.
  * Unsupported opcodes fault.
  * This is intentionally not presented as a complete 68000 core.
@@ -339,6 +339,16 @@ unsigned m68k_step(m68k_cpu_t *cpu)
             int16_t offset = (int16_t)fetch16(cpu);
             address = cpu->a[ea_reg] + (int32_t)offset;
             used = 8u; /* LEA d16(An),An */
+        } else if (ea_mode == 6u || (ea_mode == 7u && ea_reg == 3u)) {
+            uint32_t base = ea_mode == 6u ? cpu->a[ea_reg] : cpu->pc;
+            uint16_t extension = fetch16(cpu);
+            unsigned index_reg = (extension >> 12) & 7u;
+            uint32_t index = (extension & 0x8000u) != 0u
+                ? cpu->a[index_reg] : cpu->d[index_reg];
+            if ((extension & 0x0800u) == 0u)
+                index = (uint32_t)(int32_t)(int16_t)index;
+            address = base + (uint32_t)(int32_t)(int8_t)(extension & 0xFFu) + index;
+            used = 10u; /* brief indexed d8(An,Xn) or d8(PC,Xn), 68000 scale=1 */
         } else if (ea_mode == 7u && ea_reg == 0u) {
             address = (uint32_t)(int32_t)(int16_t)fetch16(cpu);
             used = 8u; /* LEA absolute short */
