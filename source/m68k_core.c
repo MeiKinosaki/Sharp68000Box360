@@ -269,7 +269,7 @@ unsigned m68k_step(m68k_cpu_t *cpu)
             if (ea_mode == 0u) set_add_flags(cpu, old_value, quick, result, size);
         }
         if (ea_mode == 1u) {
-            cpu->a[reg] = size == 1u ? (uint32_t)(int32_t)(int16_t)result : result;
+            cpu->a[reg] = result; /* word-sized quick arithmetic still updates full An */
             used = 8u; /* ADDQ/SUBQ.W/L An; condition codes are unaffected */
         } else {
             cpu->d[reg] = (cpu->d[reg] & ~mask) | result;
