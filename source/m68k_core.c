@@ -343,7 +343,12 @@ unsigned m68k_step(m68k_cpu_t *cpu)
             uint32_t base = ea_mode == 6u ? cpu->a[ea_reg] : cpu->pc;
             uint16_t extension = fetch16(cpu);
             unsigned index_reg = (extension >> 12) & 7u;
-            uint32_t index = (extension & 0x8000u) != 0u
+            uint32_t index;
+            if ((extension & 0x0100u) != 0u) {
+                cpu->fault = 1u;
+                return 0u; /* 68000 brief extension requires bit 8 to be zero */
+            }
+            index = (extension & 0x8000u) != 0u
                 ? cpu->a[index_reg] : cpu->d[index_reg];
             if ((extension & 0x0800u) == 0u)
                 index = (uint32_t)(int32_t)(int16_t)index;
