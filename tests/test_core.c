@@ -138,17 +138,21 @@ static void test_quick_address_registers(void)
     io.write16(io.context, 0x100u, 0x5249u); /* ADDQ.W #1,A1 */
     io.write16(io.context, 0x102u, 0x558Au); /* SUBQ.L #2,A2 */
     io.write16(io.context, 0x104u, 0x504Bu); /* ADDQ.W #8,A3 */
+    io.write16(io.context, 0x106u, 0x514Cu); /* SUBQ.W #8,A4 */
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
     cpu.sr = 0x2015u;
     cpu.a[1] = 0x0000FFFFu;
     cpu.a[2] = 0x00001000u;
     cpu.a[3] = 0x00000010u;
+    cpu.a[4] = 0x00010000u;
     assert(m68k_step(&cpu) == 8u && cpu.a[1] == 0x00010000u);
     assert(cpu.sr == 0x2015u);
     assert(m68k_step(&cpu) == 8u && cpu.a[2] == 0x00000FFEu);
     assert(cpu.sr == 0x2015u);
     assert(m68k_step(&cpu) == 8u && cpu.a[3] == 0x00000018u);
+    assert(cpu.sr == 0x2015u);
+    assert(m68k_step(&cpu) == 8u && cpu.a[4] == 0x0000FFF8u);
     assert(cpu.sr == 0x2015u && cpu.fault == 0u);
     free(state);
 }
