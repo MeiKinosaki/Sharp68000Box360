@@ -38,6 +38,7 @@ static void bus_write16(void *context, uint32_t address, uint16_t value)
 
 void x68000_bus_init(x68000_bus_state_t *state)
 {
+    if (state == 0) return;
     memset(state, 0, sizeof(*state));
 }
 
