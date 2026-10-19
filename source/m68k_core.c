@@ -100,7 +100,7 @@ int m68k_reset(m68k_cpu_t *cpu)
 /*
  * Experimental interpreter slice. Supported instructions:
  * NOP, RTS, MOVEQ, MOVE data-register and selected memory forms,
- * MOVEA.W/L Dn,An, LEA absolute short/long and PC-relative displacement, BRA/Bcc, BSR,
+ * MOVEA.W/L Dn,An, LEA (An), d16(An), absolute short/long and PC-relative displacement, BRA/Bcc, BSR,
  * absolute JMP, STOP, ADDQ/SUBQ on Dn, CLR Dn and TST Dn.
  * Unsupported opcodes fault.
  * This is intentionally not presented as a complete 68000 core.
@@ -327,21 +327,32 @@ unsigned m68k_step(m68k_cpu_t *cpu)
         }
         if (take) cpu->pc = (cpu->pc + (uint32_t)displacement) & 0x00FFFFFFu;
         used = 10u;
-    } else if ((op & 0xF1FFu) == 0x41F8u ||
-               (op & 0xF1FFu) == 0x41F9u ||
-               (op & 0xF1FFu) == 0x41FAu) {
+    } else if ((op & 0xF1C0u) == 0x41C0u) {
         unsigned dst = (op >> 9) & 7u;
-        uint32_t address;
-        if ((op & 7u) == 2u) {
+        unsigned ea_mode = (op >> 3) & 7u;
+        unsigned ea_reg = op & 7u;
+        uint32_t address = 0u;
+        if (ea_mode == 2u) {
+            address = cpu->a[ea_reg];
+            used = 4u; /* LEA (An),An */
+        } else if (ea_mode == 5u) {
+            int16_t offset = (int16_t)fetch16(cpu);
+            address = cpu->a[ea_reg] + (int32_t)offset;
+            used = 8u; /* LEA d16(An),An */
+        } else if (ea_mode == 7u && ea_reg == 0u) {
+            address = (uint32_t)(int32_t)(int16_t)fetch16(cpu);
+            used = 8u; /* LEA absolute short */
+        } else if (ea_mode == 7u && ea_reg == 1u) {
+            address = fetch32(cpu);
+            used = 12u; /* LEA absolute long */
+        } else if (ea_mode == 7u && ea_reg == 2u) {
             uint32_t pc_base = cpu->pc;
             int16_t offset = (int16_t)fetch16(cpu);
             address = pc_base + (int32_t)offset;
             used = 8u; /* LEA d16(PC),An */
         } else {
-            address = (op & 1u) == 0u
-                ? (uint32_t)(int32_t)(int16_t)fetch16(cpu)
-                : fetch32(cpu);
-            used = (op & 1u) == 0u ? 8u : 12u; /* LEA absolute short/long */
+            cpu->fault = 1u;
+            return 0u; /* indexed and unsupported LEA effective addresses */
         }
         cpu->a[dst] = address & 0x00FFFFFFu; /* LEA does not change flags */
     } else if (op == 0x4EF9u) {
