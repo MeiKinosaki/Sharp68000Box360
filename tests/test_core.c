@@ -355,6 +355,10 @@ static void test_lea_absolute_modes(void)
     cpu.d[3] = 0x00000030u;
     assert(m68k_step(&cpu) == 10u && cpu.a[7] == 0x146u);
     assert(cpu.sr == 0x2015u && cpu.fault == 0u);
+
+    io.write16(io.context, 0x11Cu, 0x4DF0u); /* LEA indexed, reserved extension bit */
+    io.write16(io.context, 0x11Eu, 0x1104u); /* bit 8 is reserved on 68000 */
+    assert(m68k_step(&cpu) == 0u && cpu.fault == 1u);
     free(state);
 }
 
