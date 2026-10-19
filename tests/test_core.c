@@ -332,9 +332,9 @@ static void test_lea_absolute_modes(void)
     io.write16(io.context, 0x10Eu, 0x49D2u); /* LEA (A2),A4 */
     io.write16(io.context, 0x110u, 0x4BE9u); /* LEA d16(A1),A5 */
     io.write16(io.context, 0x112u, 0xFFF0u); /* A1 - 16 */
-    io.write16(io.context, 0x114u, 0x4D30u); /* LEA d8(A0,D1.W),A6 */
+    io.write16(io.context, 0x114u, 0x4DF0u); /* LEA d8(A0,D1.W),A6 */
     io.write16(io.context, 0x116u, 0x1004u); /* D1.W + 4 */
-    io.write16(io.context, 0x118u, 0x4FF3u); /* LEA d8(PC,D3.L),A7 */
+    io.write16(io.context, 0x118u, 0x4FFBu); /* LEA d8(PC,D3.L),A7 */
     io.write16(io.context, 0x11Au, 0x38FCu); /* PC base 0x11C + D3 + (-4) */
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
@@ -353,7 +353,7 @@ static void test_lea_absolute_modes(void)
     cpu.d[1] = 0x00000020u;
     assert(m68k_step(&cpu) == 10u && cpu.a[6] == 0x224u);
     cpu.d[3] = 0x00000030u;
-    assert(m68k_step(&cpu) == 10u && cpu.a[7] == 0x148u);
+    assert(m68k_step(&cpu) == 10u && cpu.a[7] == 0x146u);
     assert(cpu.sr == 0x2015u && cpu.fault == 0u);
     free(state);
 }
