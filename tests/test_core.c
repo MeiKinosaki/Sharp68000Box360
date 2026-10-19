@@ -330,7 +330,7 @@ static void test_lea_absolute_modes(void)
     io.write16(io.context, 0x10Au, 0x47FAu); /* LEA d16(PC),A3 */
     io.write16(io.context, 0x10Cu, 0x0010u); /* PC base 0x10C -> 0x11C */
     io.write16(io.context, 0x10Eu, 0x49D2u); /* LEA (A2),A4 */
-    io.write16(io.context, 0x110u, 0x4BF1u); /* LEA d16(A1),A5 */
+    io.write16(io.context, 0x110u, 0x4BE9u); /* LEA d16(A1),A5 */
     io.write16(io.context, 0x112u, 0xFFF0u); /* A1 - 16 */
     m68k_init(&cpu, &io);
     assert(m68k_reset(&cpu) == 0);
