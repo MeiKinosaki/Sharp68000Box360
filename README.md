@@ -12,6 +12,7 @@ Projeto experimental de emulador do **Sharp X68000 para Xbox 360 (RGH/JTAG)**, u
 - Barramento experimental com 1 MiB de RAM, janela de ROM de 256 KiB e contadores de acessos não mapeados/escritas ignoradas.
 - Scheduler inicial com orçamento de ciclos por quadro e distribuição do resto da divisão para reduzir deriva entre quadros.
 - Save state/load state versão 1: serialização determinística em big-endian, cabeçalho com versão/tamanho, CRC32 para detectar corrupção, snapshot dos registradores 68000, estado do scheduler, RAM e contadores do barramento; carrega em duas fases para rejeitar arquivos inválidos antes de modificar a máquina. O estado não inclui a imagem da ROM (exige ROM já carregada compatível) nem periféricos ainda não implementados.
+- Biblioteca de jogos inicial (`source/x68000_library.c/.h`): catálogo limitado a 256 entradas, caminhos de ROM/capa, nome, favoritos com alternância, busca, remoção e rejeição de entradas duplicadas ou strings grandes demais. Os caminhos `Hdd1:/Emulators/Sharp68000Box360/{ROMs,Covers,States,Saves}` são convenções propostas, ainda não validadas em um dispositivo montado no Xbox 360.
 
 - Testes host para barramento (proteção de ROM, preservação da ROM após carga inválida, inicialização nula segura e máscara de endereço de 24 bits), reset, opcode não suportado, flags de ADDQ/SUBQ em Dn (C/X/N/Z/V) e preservação de SR em ADDQ/SUBQ para An e resultados de 32 bits em operações `.W` de An, BSR/RTS, MOVE com acesso à memória e endereçamento absoluto curto/longo, LEA absoluto `.W/.L`, relativo ao PC, indireto/deslocamento e indexado breve, com preservação de flags e rejeição dos bits reservados (incluindo o campo de escala), e distribuição fracionária de ciclos do scheduler, inclusive quando a frequência da CPU é inferior à frequência de quadros.
 
@@ -20,6 +21,9 @@ Projeto experimental de emulador do **Sharp X68000 para Xbox 360 (RGH/JTAG)**, u
 - Conjunto completo de instruções e exceções do Motorola 68000, incluindo auditoria sistemática de flags, ciclos, alinhamento e falhas de barramento.
 - Mapa de memória real do X68000, MMIO e controladores.
 - Carga de IPL/ROMs e mídia de jogos.
+- Interface gráfica estilo Aurora, splash animado e música original de abertura, reprodução de áudio e entrada por controle.
+- Backend real de armazenamento para enumerar ROMs e persistir catálogo/favoritos/save states em HDD/USB.
+- Download automático de capas por Wi-Fi/Ethernet, incluindo HTTP/TLS, cache, timeout e tratamento de falhas.
 - Vídeo, áudio, teclado, armazenamento, temporização de dispositivos e interrupções.
 - Validação de desempenho/compatibilidade no Xbox 360 real.
 - Conversão e validação de `default.xex`.
