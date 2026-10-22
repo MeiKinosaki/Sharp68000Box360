@@ -27,7 +27,7 @@ jobs:
         run: |
           set -euo pipefail
           gcc -std=c11 -Wall -Wextra -Werror -pedantic \
-            tests/test_core.c source/m68k_core.c source/x68000_bus.c source/x68000_scheduler.c \
+            tests/test_core.c source/m68k_core.c source/x68000_bus.c source/x68000_scheduler.c source/x68000_state.c \
             -o /tmp/sharp68000-host-tests
           /tmp/sharp68000-host-tests
 
