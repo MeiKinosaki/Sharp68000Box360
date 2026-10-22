@@ -461,7 +461,7 @@ static void test_game_library_favorites(void)
     assert(x68000_library_favorite_count(lib) == 1u);
     entry = x68000_library_find(lib, "Hdd1:/ROMs/test.xdf");
     assert(entry != NULL && entry->favorite == 1u);
-    assert(strcmp(entry->title, "Test Game") == 0 && entry->cover_path[0] == '\\0');
+    assert(strcmp(entry->title, "Test Game") == 0 && entry->cover_path[0] == '\0');
     assert(x68000_library_set_favorite(lib, "Hdd1:/ROMs/test.xdf", 0) == 0);
     assert(x68000_library_favorite_count(lib) == 0u);
     assert(x68000_library_remove(lib, "Hdd1:/ROMs/test.xdf") == 0);
