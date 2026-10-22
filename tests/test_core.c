@@ -2,10 +2,12 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "../source/m68k_core.h"
 #include "../source/x68000_bus.h"
 #include "../source/x68000_scheduler.h"
+#include "../source/x68000_state.h"
 
 static void test_bus(void)
 {
@@ -390,6 +392,59 @@ static void test_scheduler(void)
     assert(x68000_scheduler_begin_frame(&s) == 1u);
 }
 
+
+static void test_save_load_state(void)
+{
+    x68000_bus_state_t *bus = (x68000_bus_state_t *)calloc(1, sizeof(*bus));
+    m68k_cpu_t cpu, restored;
+    x68000_scheduler_t sched, restored_sched;
+    m68k_bus_t io;
+    uint8_t *blob;
+    size_t size = x68000_state_size();
+    assert(bus != NULL);
+    blob = (uint8_t *)malloc(size);
+    assert(blob != NULL);
+    x68000_bus_init(bus);
+    io = x68000_bus_interface(bus);
+    io.write16(io.context, 0u, 0u);
+    io.write16(io.context, 2u, 0x0800u);
+    io.write16(io.context, 4u, 0u);
+    io.write16(io.context, 6u, 0x0100u);
+    m68k_init(&cpu, &io);
+    assert(m68k_reset(&cpu) == 0);
+    cpu.d[0] = 0x12345678u;
+    cpu.a[3] = 0x00000400u;
+    cpu.pc = 0x00001234u;
+    cpu.cycles = 9876u;
+    cpu.sr = 0x2015u;
+    bus->ram[0x400u] = 0xA5u;
+    x68000_scheduler_init(&sched, 10000000u, 50u);
+    (void)x68000_scheduler_begin_frame(&sched);
+    x68000_scheduler_account(&sched, 44u);
+    assert(x68000_state_save(&cpu, bus, &sched, blob, size) == (int)size);
+
+    cpu.d[0] = 0u; cpu.a[3] = 0u; cpu.pc = 0u; cpu.cycles = 0u; cpu.sr = 0u;
+    bus->ram[0x400u] = 0u;
+    memset(&sched, 0, sizeof(sched));
+    m68k_init(&restored, &io);
+    x68000_scheduler_init(&restored_sched, 1u, 1u);
+    assert(x68000_state_load(&restored, bus, &restored_sched, blob, size) == 0);
+    assert(restored.d[0] == 0x12345678u && restored.a[3] == 0x400u);
+    assert(restored.pc == 0x1234u && restored.cycles == 9876u && restored.sr == 0x2015u);
+    assert(bus->ram[0x400u] == 0xA5u);
+    assert(restored_sched.cpu_cycles == 44u && restored_sched.frame_number == 1u);
+    assert(restored.bus.context == bus && restored.bus.read16 != NULL);
+
+    /* Corrupt data must be rejected before any machine state is mutated. */
+    blob[size - 1u] ^= 0x80u;
+    restored.d[0] = 0xCAFEBABEu;
+    assert(x68000_state_load(&restored, bus, &restored_sched, blob, size) == -3);
+    assert(restored.d[0] == 0xCAFEBABEu);
+    assert(x68000_state_load(&restored, bus, &restored_sched, blob, size - 1u) == -1);
+    free(blob);
+    free(bus);
+}
+
 int main(void)
 {
     test_bus();
@@ -403,6 +458,7 @@ int main(void)
     test_move_absolute_modes();
     test_lea_absolute_modes();
     test_scheduler();
+    test_save_load_state();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
 }
