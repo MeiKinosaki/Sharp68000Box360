@@ -8,6 +8,7 @@
 #include "../source/x68000_bus.h"
 #include "../source/x68000_scheduler.h"
 #include "../source/x68000_state.h"
+#include "../source/x68000_library.h"
 
 static void test_bus(void)
 {
@@ -445,6 +446,30 @@ static void test_save_load_state(void)
     free(bus);
 }
 
+
+static void test_game_library_favorites(void)
+{
+    x68000_library_t *lib = (x68000_library_t *)calloc(1, sizeof(*lib));
+    const x68000_game_entry_t *entry;
+    assert(lib != NULL);
+    x68000_library_init(lib);
+    assert(x68000_library_add(lib, "Test Game", "Hdd1:/ROMs/test.xdf", "") == 0);
+    assert(x68000_library_add(lib, "Test Game", "Hdd1:/ROMs/test.xdf", "") == -2);
+    assert(x68000_library_add(lib, "Too Long", "", "") == -3);
+    assert(lib->count == 1u && x68000_library_favorite_count(lib) == 0u);
+    assert(x68000_library_toggle_favorite(lib, "Hdd1:/ROMs/test.xdf") == 1);
+    assert(x68000_library_favorite_count(lib) == 1u);
+    entry = x68000_library_find(lib, "Hdd1:/ROMs/test.xdf");
+    assert(entry != NULL && entry->favorite == 1u);
+    assert(strcmp(entry->title, "Test Game") == 0 && entry->cover_path[0] == '\\0');
+    assert(x68000_library_set_favorite(lib, "Hdd1:/ROMs/test.xdf", 0) == 0);
+    assert(x68000_library_favorite_count(lib) == 0u);
+    assert(x68000_library_remove(lib, "Hdd1:/ROMs/test.xdf") == 0);
+    assert(lib->count == 0u && x68000_library_find(lib, "Hdd1:/ROMs/test.xdf") == NULL);
+    assert(x68000_library_remove(lib, "missing") == -1);
+    free(lib);
+}
+
 int main(void)
 {
     test_bus();
@@ -459,6 +484,7 @@ int main(void)
     test_lea_absolute_modes();
     test_scheduler();
     test_save_load_state();
+    test_game_library_favorites();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
 }
