@@ -39,5 +39,11 @@ int x68000_library_toggle_favorite(x68000_library_t *library,
 const x68000_game_entry_t *x68000_library_find(const x68000_library_t *library,
                                                 const char *game_path);
 size_t x68000_library_favorite_count(const x68000_library_t *library);
+/* Compact versioned catalogue serialization for a future HDD/USB file backend. */
+size_t x68000_library_encoded_max_size(void);
+int x68000_library_encode(const x68000_library_t *library,
+                          uint8_t *output, size_t capacity);
+int x68000_library_decode(x68000_library_t *library,
+                          const uint8_t *input, size_t length);
 
 #endif
