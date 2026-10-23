@@ -142,7 +142,7 @@ int x68000_library_encode(const x68000_library_t *library, uint8_t *out, size_t 
         if (title_len == 0u || title_len >= X68000_GAME_TITLE_MAX ||
             path_len == 0u || path_len >= X68000_GAME_PATH_MAX ||
             cover_len >= X68000_COVER_PATH_MAX || e->favorite > 1u ||
-            at > capacity || need > capacity - at - LIBRARY_CRC_SIZE) return -2;
+            at > capacity || capacity - at < LIBRARY_CRC_SIZE || need > capacity - at - LIBRARY_CRC_SIZE) return -2;
         out[at++] = (uint8_t)title_len;
         out[at++] = (uint8_t)(path_len >> 8);
         out[at++] = (uint8_t)path_len;
