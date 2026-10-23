@@ -92,7 +92,7 @@ size_t x68000_library_favorite_count(const x68000_library_t *library)
 #define LIBRARY_VERSION 1u
 #define LIBRARY_HEADER_SIZE 8u
 #define LIBRARY_CRC_SIZE 4u
-#define LIBRARY_MAX_ENCODED (LIBRARY_HEADER_SIZE + X68000_LIBRARY_MAX_GAMES * (4u + X68000_GAME_TITLE_MAX + X68000_GAME_PATH_MAX + X68000_COVER_PATH_MAX) + LIBRARY_CRC_SIZE)
+#define LIBRARY_MAX_ENCODED (LIBRARY_HEADER_SIZE + X68000_LIBRARY_MAX_GAMES * (5u + X68000_GAME_TITLE_MAX + X68000_GAME_PATH_MAX + X68000_COVER_PATH_MAX) + LIBRARY_CRC_SIZE)
 
 static void lib_put16(uint8_t *p, uint16_t v)
 {
@@ -138,7 +138,7 @@ int x68000_library_encode(const x68000_library_t *library, uint8_t *out, size_t 
         const x68000_game_entry_t *e = &library->entries[i];
         size_t title_len = strlen(e->title), path_len = strlen(e->game_path);
         size_t cover_len = strlen(e->cover_path);
-        size_t need = 4u + title_len + path_len + cover_len;
+        size_t need = 5u + title_len + path_len + cover_len;
         if (title_len == 0u || title_len >= X68000_GAME_TITLE_MAX ||
             path_len == 0u || path_len >= X68000_GAME_PATH_MAX ||
             cover_len >= X68000_COVER_PATH_MAX || e->favorite > 1u ||
