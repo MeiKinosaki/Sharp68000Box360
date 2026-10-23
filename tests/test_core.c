@@ -9,6 +9,7 @@
 #include "../source/x68000_scheduler.h"
 #include "../source/x68000_state.h"
 #include "../source/x68000_library.h"
+#include "../source/x68000_frontend.h"
 
 static void test_bus(void)
 {
@@ -470,6 +471,41 @@ static void test_game_library_favorites(void)
     free(lib);
 }
 
+
+static void test_frontend_navigation(void)
+{
+    x68000_library_t *lib = (x68000_library_t *)calloc(1, sizeof(*lib));
+    x68000_frontend_t ui;
+    assert(lib != NULL);
+    x68000_library_init(lib);
+    assert(x68000_library_add(lib, "Game A", "rom/a.xdf", "covers/a.png") == 0);
+    assert(x68000_library_add(lib, "Game B", "rom/b.xdf", "covers/b.png") == 0);
+    assert(x68000_library_set_favorite(lib, "rom/b.xdf", 1) == 0);
+    x68000_frontend_init(&ui, 2u);
+    assert(ui.screen == X68000_SCREEN_SPLASH);
+    x68000_frontend_tick(&ui);
+    assert(ui.screen == X68000_SCREEN_SPLASH);
+    x68000_frontend_tick(&ui);
+    assert(ui.screen == X68000_SCREEN_LIBRARY);
+    x68000_frontend_move_menu(&ui, -1);
+    assert(ui.selected_menu_item == X68000_MENU_QUIT);
+    x68000_frontend_move_menu(&ui, 1);
+    assert(ui.selected_menu_item == X68000_MENU_LIBRARY);
+    x68000_frontend_move_menu(&ui, 1);
+    assert(ui.selected_menu_item == X68000_MENU_FAVORITES);
+    x68000_frontend_activate_menu(&ui);
+    assert(ui.screen == X68000_SCREEN_FAVORITES && ui.show_favorites_only == 1u);
+    assert(x68000_frontend_selected_game(&ui, lib) != NULL);
+    assert(strcmp(x68000_frontend_selected_game(&ui, lib)->title, "Game B") == 0);
+    x68000_frontend_move_game(&ui, lib, 1);
+    assert(x68000_frontend_selected_game(&ui, lib) != NULL);
+    x68000_frontend_move_menu(&ui, 1);
+    assert(ui.selected_menu_item == X68000_MENU_SETTINGS);
+    x68000_frontend_activate_menu(&ui);
+    assert(ui.screen == X68000_SCREEN_SETTINGS);
+    free(lib);
+}
+
 int main(void)
 {
     test_bus();
@@ -485,6 +521,7 @@ int main(void)
     test_scheduler();
     test_save_load_state();
     test_game_library_favorites();
+    test_frontend_navigation();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
 }
