@@ -116,7 +116,7 @@ int x68000_state_load(m68k_cpu_t *cpu, x68000_bus_state_t *bus,
     bus->unmapped_reads = unmapped_reads;
     bus->ignored_writes = ignored_writes;
     *cpu = next_cpu;
-    cpu->bus = (m68k_bus_t){ bus, cpu->bus.read8, cpu->bus.read16, cpu->bus.write8, cpu->bus.write16 };
+    cpu->bus = x68000_bus_interface(bus);
     *s = next_scheduler;
     return 0;
 }
