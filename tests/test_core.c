@@ -506,6 +506,35 @@ static void test_frontend_navigation(void)
     free(lib);
 }
 
+
+static void test_library_encode_decode(void)
+{
+    x68000_library_t *source = (x68000_library_t *)calloc(1, sizeof(*source));
+    x68000_library_t *target = (x68000_library_t *)calloc(1, sizeof(*target));
+    uint8_t *blob;
+    int encoded;
+    assert(source != NULL && target != NULL);
+    blob = (uint8_t *)malloc(x68000_library_encoded_max_size());
+    assert(blob != NULL);
+    x68000_library_init(source);
+    assert(x68000_library_add(source, "Game One", "Hdd1:/ROMs/one.xdf", "Hdd1:/Covers/one.png") == 0);
+    assert(x68000_library_add(source, "Game Two", "Hdd1:/ROMs/two.xdf", "") == 0);
+    assert(x68000_library_set_favorite(source, "Hdd1:/ROMs/two.xdf", 1) == 0);
+    encoded = x68000_library_encode(source, blob, x68000_library_encoded_max_size());
+    assert(encoded > 0);
+    assert(x68000_library_decode(target, blob, (size_t)encoded) == 0);
+    assert(target->count == 2u && x68000_library_favorite_count(target) == 1u);
+    assert(strcmp(target->entries[0].title, "Game One") == 0);
+    assert(strcmp(target->entries[0].cover_path, "Hdd1:/Covers/one.png") == 0);
+    assert(target->entries[1].favorite == 1u);
+    target->entries[0].favorite = 1u;
+    blob[encoded - 1] ^= 0x01u;
+    assert(x68000_library_decode(target, blob, (size_t)encoded) == -3);
+    assert(target->entries[0].favorite == 1u); /* invalid data must not mutate destination */
+    assert(x68000_library_decode(target, blob, (size_t)encoded - 1u) == -1);
+    free(blob); free(source); free(target);
+}
+
 int main(void)
 {
     test_bus();
@@ -522,6 +551,7 @@ int main(void)
     test_save_load_state();
     test_game_library_favorites();
     test_frontend_navigation();
+    test_library_encode_decode();
     puts("Sharp68000Box360 host tests: PASS");
     return 0;
 }
